@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
-	consul "github.com/hashicorp/consul/api"
+	"github.com/hashicorp/consul/api"
 	lb "github.com/olivere/grpc/lb/consul"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 )
 
@@ -21,7 +21,7 @@ func WithTracer(t opentracing.Tracer) DiscoveryOption {
 }
 
 // WithBalancer enables client side load balancing
-func WithBalancer(cc *consul.Client) DiscoveryOption {
+func WithBalancer(cc *api.Client) DiscoveryOption {
 	return func(name string) (grpc.DialOption, error) {
 		r, err := lb.NewResolver(cc, name, "")
 		if err != nil {

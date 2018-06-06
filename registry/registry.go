@@ -4,21 +4,21 @@ import (
 	"fmt"
 	"net"
 
-	consul "github.com/hashicorp/consul/api"
+	"github.com/hashicorp/consul/api"
 	"github.com/segmentio/ksuid"
 )
 
 // Client provides an interface for communicating with registry
 type Client struct {
-	*consul.Client
+	*api.Client
 }
 
 // NewClient returns a new Client with connection to consul
 func NewClient(addr string) (*Client, error) {
-	cfg := consul.DefaultConfig()
+	cfg := api.DefaultConfig()
 	cfg.Address = addr
 
-	c, err := consul.NewClient(cfg)
+	c, err := api.NewClient(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func (c *Client) Register(name string, port int) (string, error) {
 		localAddr = conn.LocalAddr().(*net.UDPAddr)
 	)
 
-	reg := &consul.AgentServiceRegistration{
+	reg := &api.AgentServiceRegistration{
 		ID:      uuid,
 		Name:    name,
 		Port:    port,
