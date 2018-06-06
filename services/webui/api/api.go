@@ -1,14 +1,15 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+
+	"github.com/gorilla/mux"
 	"github.com/opentracing/opentracing-go"
 	"github.com/ycrxun/onion/services/account/proto"
-	"net/http"
-	"fmt"
-	"strconv"
-	"encoding/json"
 	"github.com/ycrxun/onion/tracing"
-	"github.com/gorilla/mux"
 )
 
 type Server struct {
@@ -27,7 +28,7 @@ func (s *Server) Run(port int) error {
 
 	r := tracing.NewServeMux(s.tracer)
 	r.Handle("/v1/accounts", http.HandlerFunc(s.accountsHandler))
-	r.Handle("/v1/accounts/{id}", http.HandlerFunc(s.accountHandler))
+	r.HandleFunc("/v1/accounts/{id}", s.accountHandler)
 
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), r)
 }
