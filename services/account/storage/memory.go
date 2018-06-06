@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"strconv"
 	"sync"
+	"github.com/twinj/uuid"
 )
 
 type (
@@ -15,40 +15,25 @@ type (
 )
 
 func NewMemoryStorage() *memoryStorage {
+	accounts := make(Map, 0)
+	account := Account{
+		ID:    uuid.NewV4().String(),
+		Name:  "ycrxun",
+		Email: "ycrxun@163.com",
+	}
+	accounts[account.ID] = account
 	return &memoryStorage{
-		accounts: Map{},
+		accounts: accounts,
 	}
-}
-
-func (s *memoryStorage) MapToSlice() []Account {
-	output := make([]Account, 0)
-	for _, v := range s.accounts {
-		output = append(output, v)
-	}
-	return output
 }
 
 func (s *memoryStorage) List(count32 int32, token string) (accounts []*Account, next string, err error) {
-	count := int(count32)
-	if token == "" {
-		token = "0"
-	}
 
-	offset, err := strconv.Atoi(token)
-	if err != nil {
-		return accounts, next, err
-	}
-
-	max := len(s.accounts)
-
-	if offset > max {
-	}
-
-	for _, v := range s.MapToSlice() {
+	for _, v := range s.accounts {
 		accounts = append(accounts, &v)
 	}
 
-	return accounts[count:offset], next, nil
+	return accounts, next, nil
 }
 
 func (s *memoryStorage) ReadByID(ID string) (account *Account, err error) {
@@ -58,15 +43,37 @@ func (s *memoryStorage) ReadByID(ID string) (account *Account, err error) {
 }
 
 func (s *memoryStorage) ReadByEmail(email string) (*Account, error) {
-	return nil, nil
+	for _, v := range s.accounts {
+		if v.Email == email {
+			return &v, nil
+		}
+	}
+	return nil, ErrAccountNotFound
 }
 func (s *memoryStorage) Create(a *Account, password string) error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	for _, v := range s.accounts {
+		if v.Email == a.Email {
+			return ErrEmailExists
+		}
+	}
+	a.ID = uuid.NewV4().String()
+	s.accounts[a.ID] = *a
 	return nil
 }
 func (s *memoryStorage) Update(a *Account) error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	s.accounts[a.ID] = *a
 	return nil
 }
 func (s *memoryStorage) Delete(ID string) error {
+	for k, v := range s.accounts {
+		if v.ID == ID {
+			delete(s.accounts, k)
+		}
+	}
 	return nil
 }
 func (s *memoryStorage) Confirm(token string) (*Account, error) {

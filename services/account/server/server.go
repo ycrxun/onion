@@ -10,18 +10,23 @@ import (
 	"net"
 	"log"
 	"golang.org/x/net/context"
+	"github.com/ycrxun/onion/metrics"
+	"time"
 )
 
 type Server struct {
 	tracer  opentracing.Tracer
 	storage storage.Storage
+	m       metrics.Metrics
 }
 
 // NewServer returns a new server
-func NewServer(tr opentracing.Tracer, storage storage.Storage) *Server {
+func NewServer(tr opentracing.Tracer, metrics metrics.Metrics,
+	storage storage.Storage) *Server {
 	return &Server{
 		tracer:  tr,
 		storage: storage,
+		m:       metrics,
 	}
 }
 
@@ -42,9 +47,26 @@ func (s *Server) Run(port int) error {
 }
 
 func (s *Server) List(ctx context.Context, req *pb.ListAccountsRequest) (*pb.ListAccountsResponse, error) {
-	accounts,next, err := s.storage.List(req.PageSize, req.PageToken)
+	defer func(begin time.Time) {
+		s.m.Counter.With("method", "list").Add(1)
+		s.m.Histogram.With("method", "list").Observe(time.Since(begin).Seconds())
+	}(time.Now())
+
+	list, next, err := s.storage.List(req.PageSize, req.PageToken)
 	if err != nil {
 		return nil, err
+	}
+	var accounts []*pb.Account
+	for _, v := range list {
+		account := pb.Account{
+			Id:                 v.ID,
+			Name:               v.Name,
+			Email:              v.Email,
+			ConfirmToken:       v.ConfirmationToken,
+			PasswordResetToken: v.PasswordResetToken,
+			Metadata:           v.Metadata,
+		}
+		accounts = append(accounts, &account)
 	}
 	response := &pb.ListAccountsResponse{
 		Accounts:      accounts,
@@ -52,8 +74,16 @@ func (s *Server) List(ctx context.Context, req *pb.ListAccountsRequest) (*pb.Lis
 	}
 	return response, nil
 }
-func (s *Server) GetById(context.Context, *pb.GetByIdRequest) (*pb.Account, error) {
-	return nil, nil
+func (s *Server) GetById(ctx context.Context,
+	req *pb.GetByIdRequest) (*pb.Account,
+	error) {
+	a, err := s.storage.ReadByID(req.Id)
+
+	return &pb.Account{
+		Id:    a.ID,
+		Email: a.Email,
+		Name:  a.Name,
+	}, err
 }
 func (s *Server) GetByEmail(context.Context, *pb.GetByEmailRequest) (*pb.Account, error) {
 	return nil, nil
